@@ -80,3 +80,50 @@ SELECT * FROM category_tree;
 ![](https://oss.yiki.tech/gmall/20251219141304317.png)
 
 ![](https://oss.yiki.tech/gmall/20251219141142685.png)
+
+
+
+## 2. 根据分类 id 查询属性规格分组
+
+### 表结构
+
+> 商品规格参数按分组进行管理，不同类别的商品具有不同的分组名称。一个现象是，不同品类的商品可能拥有**名称相同但内容完全独立**的分组。例如，手机、显示器、硬盘都可能有一个名为“主体信息”的分组，但其中定义的参数（属性）截然不同。同样，手机会有独有的“系统”分组，而显示器和硬盘则没有。**因此，必须通过商品的三级分类ID来唯一确定和区分这些分组。** 规格分组由三级分类组织和管理，确保：在同一三级分类下的所有商品（例如所有手机），其规格分组和属性定义是完全相同的（都包含如“存储”、“屏幕”、“操作系统”等分组和属性）；而不同三级分类下的同名分组（如“主体信息”），则彼此独立，互不影响。
+
+```sql
+CREATE TABLE `pms_attr_group` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '分组id',
+  `name` char(20) DEFAULT NULL COMMENT '组名',
+  `sort` int DEFAULT NULL COMMENT '排序',
+  `icon` varchar(255) DEFAULT NULL COMMENT '组图标',
+  `category_id` bigint DEFAULT NULL COMMENT '所属分类id',
+  `remark` varchar(255) DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb3 COMMENT='属性分组';
+```
+
+```sql
+# 根据分类 id 查询属性规格分组
+SELECT * FROM pms_attr_group WHERE category_id = 225;
+```
+
+![](https://oss.yiki.tech/gmall/20251219155946114.png)
+
+### 接口编写
+
+```java
+@GetMapping("/category/{cid}")
+public ResponseVo<List<AttrGroupEntity>> queryGroupsByCid(@PathVariable("cid") Long cid) {
+    // select * from pms_attr_group where category_id = cid;
+    List<AttrGroupEntity> attrGroupEntities = attrGroupService.list(
+            new LambdaQueryWrapper<AttrGroupEntity>()
+                    .eq(AttrGroupEntity::getCategoryId, cid)
+    );
+
+    return ResponseVo.ok(attrGroupEntities);
+}
+```
+
+
+
+![](https://oss.yiki.tech/gmall/20251219152858903.png)
+
