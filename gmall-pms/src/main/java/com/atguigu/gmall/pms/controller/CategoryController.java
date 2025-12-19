@@ -35,6 +35,24 @@ public class CategoryController {
     private CategoryService categoryService;
 
     /**
+     * baseCrud: 1. 根据父分类的 id 查询相应的子分类
+     *      为什么页面设计的是树状结构 而 不是表格
+     *          存在很多分类，但表格展示不够清晰。如果有两个商品归属不同的分类，但分类名称相同，会让人混淆。例如，手机、电脑和家电等商品都有配件，但在展示表格中很难分清属于哪个商品的配件。因此，应该采用树形结构进行展示。
+     *
+     *      请求路径
+     *          http://api.gmall.com/pms/category/parent/-1
+     *                              /pms/category/parent/{parentId}
+     * @param pid 父分类
+     * @return 全部数据 or 子分类
+     */
+    @GetMapping("parent/{parentId}")
+    public ResponseVo<List<CategoryEntity>> queryCategoriesByPid(@PathVariable("parentId") Long pid) {
+        List<CategoryEntity> categoryEntities = categoryService.queryCategoriesByPid(pid);
+
+        return ResponseVo.ok(categoryEntities);
+    }
+
+    /**
      * 列表
      */
     @GetMapping
