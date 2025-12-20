@@ -176,3 +176,79 @@ SELECT * FROM pms_attr WHERE group_id = 1;
 ![](https://oss.yiki.tech/gmall/20251220043338217.png)
 
 ![](https://oss.yiki.tech/gmall/20251220043934587.png)
+
+## 4. 分页查询 SPU
+
+### 表结构
+
+> SPU（Standard Product Unit）标准产品单元: 一组具有共同属性的商品集
+
+```sql
+CREATE TABLE `pms_spu` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '商品id',
+  `name` varchar(200) DEFAULT NULL COMMENT '商品名称',
+  `category_id` bigint DEFAULT NULL COMMENT '所属分类id',
+  `brand_id` bigint DEFAULT NULL COMMENT '品牌id',
+  `publish_status` tinyint DEFAULT NULL COMMENT '上架状态[0 - 下架，1 - 上架]',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb3 COMMENT='spu信息';
+```
+
+### 接口编写
+
+```java
+    @Override
+    public PageResultVo querySpuByCidAndPage(Long cid, PageParamVo paramVo) {
+        LambdaQueryWrapper<SpuEntity> wrapper = new LambdaQueryWrapper<>();
+
+        // 当 cid = 0 时, 不拼接查询条件 查询全部分类, 否则 拼接查询条件 查询本类
+        if (cid != 0) {
+            wrapper.eq(SpuEntity::getCategoryId, cid);
+        }
+
+        // 获取查询条件
+        String key = paramVo.getKey();
+
+        // 当查询条件不为空时才需要拼接查询条件
+        if (StringUtils.isNotBlank(key)) {
+            /**
+             * 此处的 .and 是消费型函数式接口 Consumer, t -> t.eq 相当于 stream 操作集合. stream t -> 提供的是集合的某一个元素, 而 wrapper 提供的自身
+             *      select * from pms_spu where (id = key or name like '%key%');
+             */
+            wrapper.and(t -> t.eq(SpuEntity::getId, key).or().like(SpuEntity::getName, key));
+        }
+
+        /**
+         * page 是 IService 提供的分页方法
+         *      default <E extends IPage<T>> E page(E page, Wrapper<T> queryWrapper)
+         *          他有两个参数, 一个是 page, 一个是 wrapper
+         *              <E extends IPage<T>> E page 形参, 限定为 IPage 以及他的子类
+         *              wrapper 查询条件
+         */
+        IPage<SpuEntity> page = this.page(
+                /**
+                 *      // 返回 IPage 对象
+                 *      public <T> IPage<T> getPage(){
+                 *
+                 *         return new Page<>(pageNum, pageSize);
+                 *     }
+                 */
+                paramVo.getPage(),
+                // 查询条件
+                wrapper
+        );
+
+        return new PageResultVo(page);
+    }
+```
+
+![](https://oss.yiki.tech/gmall/20251220045742089.png)
+
+![](https://oss.yiki.tech/gmall/20251220045823801.png)
+
+![](https://oss.yiki.tech/gmall/20251220050001875.png)
+
+![](https://oss.yiki.tech/gmall/20251220050044352.png)
+
