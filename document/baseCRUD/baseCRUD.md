@@ -334,3 +334,168 @@ public ResponseVo<List<WareSkuEntity>> queryWareSkusBySkuId(@PathVariable("skuId
 
 
 ![](https://oss.yiki.tech/gmall/20251221140235465.png)
+
+
+
+## 7. 根据分类 id 查询分类下的组及规格参数
+
+### 表结构
+
+> 这个业务使用到两张表，在添加 SPU 时，通过 分类ID 查询到该分类下的所有分组以及组下的规格参数
+
+![](https://oss.yiki.tech/gmall/20251221141230635.png)
+
+```sql
+CREATE TABLE `pms_attr_group` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '分组id',
+  `name` char(20) DEFAULT NULL COMMENT '组名',
+  `sort` int DEFAULT NULL COMMENT '排序',
+  `icon` varchar(255) DEFAULT NULL COMMENT '组图标',
+  `category_id` bigint DEFAULT NULL COMMENT '所属分类id',
+  `remark` varchar(255) DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb3 COMMENT='属性分组';
+```
+
+```sql
+CREATE TABLE `pms_attr` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '属性id',
+  `name` char(30) DEFAULT NULL COMMENT '属性名',
+  `search_type` tinyint DEFAULT NULL COMMENT '是否需要检索[0-不需要，1-需要]',
+  `icon` varchar(255) DEFAULT NULL COMMENT '属性图标',
+  `value_select` char(255) DEFAULT NULL COMMENT '可选值列表[用逗号分隔]',
+  `type` tinyint DEFAULT NULL COMMENT '属性类型[0-销售属性，1-基本属性，2-既是销售属性又是基本属性]',
+  `enable` bigint DEFAULT NULL COMMENT '启用状态[0 - 禁用，1 - 启用]',
+  `show_desc` tinyint DEFAULT NULL COMMENT '快速展示【是否展示在介绍上；0-否 1-是】，在sku中仍然可以调整',
+  `category_id` bigint DEFAULT NULL COMMENT '所属分类',
+  `group_id` bigint DEFAULT NULL COMMENT '规格分组id',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb3 COMMENT='商品属性';
+```
+
+```sql
+SELECT 
+    g.*,
+    a.id AS attr_id,
+    a.name AS attr_name,
+    a.search_type,
+    a.icon AS attr_icon,
+    a.value_select,
+    a.type AS attr_type,
+    a.enable,
+    a.show_desc
+FROM pms_attr_group g
+LEFT JOIN pms_attr a ON g.id = a.group_id 
+WHERE g.category_id = 225  -- 替换为具体的分类ID
+ORDER BY g.sort ASC, a.id ASC;
+```
+
+![](https://oss.yiki.tech/gmall/20251221143016607.png)
+
+
+
+### 接口编写
+
+> 因为是通过 分类ID 查询到该分类下的所有分组以及组下的规格参数，分组表对应的实体类中是没有规格参数信息相关字段的 所以需要在分组表对应的实体类中新增 规格参数信息表的属性字段的。一个分组有多个规格参数所以需要将属性泛型设置为 List
+
+```java
+	/**
+	 * 扩展字段 不参与 mp 的 sql 语句生成, 默认一个 实体类 所有属性都为 某一个张表的 所有字段
+	 * 		@TableField(exist = false) 该注解表示 此字段不属于 mysql 列
+	 */
+	@TableField(exist = false)
+	private List<AttrEntity> attrEntities;
+```
+
+> 关联查询还是分步查询
+>
+> ​	互联网项目应优先使用分步查询，避免因数据量大和分库分表导致的关联查询性能瓶颈。
+>
+> ​		1. 性能优势：关联查询性能反而不高，例如两张表各1000 条数据，关联后可能关联出 100w 条数据，互联网项目数据本身表就比较大在关联性能较低。
+>
+> ​			关联查询容易产生笛卡尔积问题，例如两张各1000条数据的表关联可能生成百万级结果集
+>
+> ​			互联网项目数据量庞大，关联操作性能损耗显著
+> 
+>
+> ​		2. 架构适配性：如果关联查询的情况下，数据量较大会做分库分表，跨库 join 不能确保所需关联的数据都在一张表一张库中
+>
+> ​			互联网项目常采用分库分表架构
+>
+> ​			跨库关联查询（垮库join）难以保证关联数据位于同一库表，实现复杂且性能低下
+
+![](https://oss.yiki.tech/gmall/20251221145135962.png)
+
+![](https://oss.yiki.tech/gmall/20251221145307568.png)
+
+```java
+    @Override
+    public List<AttrGroupEntity> queryGroupsWithAttrsByCid(Long cid) {
+
+        // 1. 根据 cid 查询分组
+        List<AttrGroupEntity> groupEntities = list(
+                new LambdaQueryWrapper<AttrGroupEntity>().eq(AttrGroupEntity::getCategoryId, cid)
+        );
+
+        /**
+         * 如果 groupEntities 为 null 直接返回
+         *      1. 没有数据快速返回
+         *      2. 防止 null. 空指针异常
+         */
+        if (CollectionUtils.isEmpty(groupEntities)) {
+            return groupEntities;
+        }
+
+        // 2. 遍历分组查询组下的规格参数
+        groupEntities.forEach(attrGroupEntity -> {
+            attrGroupEntity.setAttrEntities(
+                    attrMapper.selectList(
+                            new LambdaQueryWrapper<AttrEntity>()
+                                    .eq(AttrEntity::getGroupId, attrGroupEntity.getId())
+                    )
+            );
+        });
+
+        return  groupEntities;
+    }
+```
+
+> 可以发现此处是添加 SPU 相关信息的，所以上述代码还需要在进行过滤一次，仅查询 SPU 相关的规格参数。只需要查询 基本属性, 不需要查询销售属性
+
+![](https://oss.yiki.tech/gmall/20251221150816447.png)
+
+```java
+    @Override
+    public List<AttrGroupEntity> queryGroupsWithAttrsByCid(Long cid) {
+
+        // 1. 根据 cid 查询分组
+        List<AttrGroupEntity> groupEntities = list(
+                new LambdaQueryWrapper<AttrGroupEntity>().eq(AttrGroupEntity::getCategoryId, cid)
+        );
+
+        /**
+         * 如果 groupEntities 为 null 直接返回
+         *      1. 没有数据快速返回
+         *      2. 防止 null. 空指针异常
+         */
+        if (CollectionUtils.isEmpty(groupEntities)) {
+            return groupEntities;
+        }
+
+        // 2. 遍历分组查询组下的规格参数
+        groupEntities.forEach(attrGroupEntity -> {
+            attrGroupEntity.setAttrEntities(
+                    attrMapper.selectList(
+                            new LambdaQueryWrapper<AttrEntity>()
+                                    .eq(AttrEntity::getGroupId, attrGroupEntity.getId())
+                                    // spu 只需要查询 基本属性, 不需要查询销售属性
+                                    .eq(AttrEntity::getType, 1)
+                    )
+            );
+        });
+
+        return  groupEntities;
+    }
+```
+
+![](https://oss.yiki.tech/gmall/20251221150508750.png)
