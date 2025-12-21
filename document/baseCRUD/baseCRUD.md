@@ -252,3 +252,43 @@ CREATE TABLE `pms_spu` (
 
 ![](https://oss.yiki.tech/gmall/20251220050044352.png)
 
+
+
+## 5. 根据 spuId 查询 spu 下 所有 sku 信息
+
+### 表结构
+
+> SKU（Stock Keeping Unit）库存量单位 因具体特性不同而细分的每个商品
+
+```sql
+CREATE TABLE `pms_sku` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'skuId',
+  `spu_id` bigint DEFAULT NULL COMMENT 'spuId',
+  `name` varchar(255) DEFAULT NULL COMMENT 'sku名称',
+  `category_id` bigint DEFAULT NULL COMMENT '所属分类id',
+  `brand_id` bigint DEFAULT NULL COMMENT '品牌id',
+  `default_image` varchar(255) DEFAULT NULL COMMENT '默认图片',
+  `title` varchar(255) DEFAULT NULL COMMENT '标题',
+  `subtitle` varchar(2000) DEFAULT NULL COMMENT '副标题',
+  `price` decimal(18,4) DEFAULT NULL COMMENT '价格',
+  `weight` int DEFAULT NULL COMMENT '重量（克）',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb3 COMMENT='sku信息';
+```
+
+### 接口编写
+
+```java
+    @GetMapping("/spu/{spuId}")
+    public ResponseVo<List<SkuEntity>> querySkuBySpuId(@PathVariable("spuId") Long spuId) {
+        // select * from pms_sku where spu_id = spuId;
+        List<SkuEntity> skuEntities = skuService.list(
+                new LambdaQueryWrapper<SkuEntity>()
+                        .eq(SkuEntity::getSpuId, spuId)
+        );
+
+        return ResponseVo.ok(skuEntities);
+    }
+```
+
+![](https://oss.yiki.tech/gmall/20251221135503358.png)
