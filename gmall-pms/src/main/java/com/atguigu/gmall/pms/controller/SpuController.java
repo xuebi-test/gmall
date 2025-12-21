@@ -86,7 +86,7 @@ public class SpuController {
     @PostMapping
     @ApiOperation("保存")
     public ResponseVo<Object> save(@RequestBody SpuVo spu){
-
+        spuService.bigSave(spu);
 
         return ResponseVo.ok();
     }
