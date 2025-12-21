@@ -499,3 +499,51 @@ ORDER BY g.sort ASC, a.id ASC;
 ```
 
 ![](https://oss.yiki.tech/gmall/20251221150508750.png)
+
+
+
+## 8. 根据分类 id 以及 type 和 searchType 查询分类下的规格参数
+
+### 表结构
+
+```sql
+CREATE TABLE `pms_attr` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '属性id',
+  `name` char(30) DEFAULT NULL COMMENT '属性名',
+  `search_type` tinyint DEFAULT NULL COMMENT '是否需要检索[0-不需要，1-需要]',
+  `icon` varchar(255) DEFAULT NULL COMMENT '属性图标',
+  `value_select` char(255) DEFAULT NULL COMMENT '可选值列表[用逗号分隔]',
+  `type` tinyint DEFAULT NULL COMMENT '属性类型[0-销售属性，1-基本属性，2-既是销售属性又是基本属性]',
+  `enable` bigint DEFAULT NULL COMMENT '启用状态[0 - 禁用，1 - 启用]',
+  `show_desc` tinyint DEFAULT NULL COMMENT '快速展示【是否展示在介绍上；0-否 1-是】，在sku中仍然可以调整',
+  `category_id` bigint DEFAULT NULL COMMENT '所属分类',
+  `group_id` bigint DEFAULT NULL COMMENT '规格分组id',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb3 COMMENT='商品属性';
+```
+
+
+
+### 接口编写
+
+```java
+    @Override
+    public List<AttrEntity> queryAttrsByCidOrTypeOrSearchType(Long cid, Integer type, Integer searchType) {
+        LambdaQueryWrapper<AttrEntity> wrapper = new LambdaQueryWrapper<>();
+
+        // 请求路径传参必传字段, 不用做判空
+        wrapper.eq(AttrEntity::getCategoryId, cid);
+
+        if (type != null) {
+            wrapper.eq(AttrEntity::getType, type);
+        }
+
+        if (searchType != null) {
+            wrapper.eq(AttrEntity::getSearchType, searchType);
+        }
+
+        return list(wrapper);
+    }
+```
+
+![](https://oss.yiki.tech/gmall/20251221153604481.png)
