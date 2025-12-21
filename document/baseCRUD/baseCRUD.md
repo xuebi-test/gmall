@@ -292,3 +292,45 @@ CREATE TABLE `pms_sku` (
 ```
 
 ![](https://oss.yiki.tech/gmall/20251221135503358.png)
+
+
+
+## 6. 根据 skuId 查询对应的 sku 库存信息
+
+### 表结构
+
+```sql
+CREATE TABLE `wms_ware_sku` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
+  `sku_id` bigint DEFAULT NULL COMMENT 'sku_id',
+  `ware_id` bigint DEFAULT NULL COMMENT '仓库id',
+  `stock` int DEFAULT NULL COMMENT '库存数',
+  `sku_name` varchar(200) DEFAULT NULL COMMENT 'sku_name',
+  `stock_locked` int DEFAULT NULL COMMENT '锁定库存',
+  `sales` bigint DEFAULT NULL COMMENT '销量',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb3 COMMENT='商品库存';
+```
+
+> Sku  表中没有 id 为 30 与 31 的数据，需要将该表中的 sku_id 数据进行修改为 1 与 2
+
+![](https://oss.yiki.tech/gmall/20251221140406486.png)
+
+
+
+### 接口编写
+
+```java
+@GetMapping("/sku/{skuId}")
+public ResponseVo<List<WareSkuEntity>> queryWareSkusBySkuId(@PathVariable("skuId") Long skuId) {
+    List<WareSkuEntity> wareSkuEntities = wareSkuService.list(
+            new LambdaQueryWrapper<WareSkuEntity>().eq(WareSkuEntity::getSkuId, skuId)
+    );
+
+    return ResponseVo.ok(wareSkuEntities);
+}
+```
+
+
+
+![](https://oss.yiki.tech/gmall/20251221140235465.png)
