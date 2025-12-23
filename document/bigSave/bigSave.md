@@ -389,3 +389,147 @@ public class SpuVo extends SpuEntity {
     }
 ```
 
+### 1. 保存 spu 相关信息
+
+#### 1.1 保存 spu 表
+
+```java
+    @Override
+    public void bigSave(SpuVo spu) {
+        // 1. 保存 spu 相关信息
+        // 1.1 保存 spu 表
+        spu.setCreateTime(new Date());
+        spu.setUpdateTime(spu.getCreateTime()); // 再创建时间会导致不一致, 直接获取上一个设置的时间即可
+        save(spu); // 由于 `SpuVo` 对象继承自 `SpuEntity` 类，因此可以将 `SpuVo` 对象看作是 `SpuEntity` 对象的一个特殊版本，而 `SpuEntity` 对象可以直接保存到数据库中。因此，`SpuVo` 对象也可以直接保存到数据库中，这并不会产生任何问题。
+
+        // 保存完 spu 后主键回显 抽取 spuId 给以下保存方法使用
+        Long spuId = spu.getId();
+
+        // 1.2 保存 pms_spu_desc 本质与 spu 是同一张表
+        // 1.3 保存 pms_spu_attr_value 基本属性值表
+
+        // 2. 保存 sku 相关信息
+        // 2.1 保存 pms_sku
+        // 2.2 保存 pms_sku_images 本质与 sku 是同一张表, 如果不为空才需要保存图片
+        // 2.3 保存 pms_sku_attr_value 销售属性值表
+
+        // 3. 保存 营销 相关信息
+        // 3.1 保存积分优惠表
+        // 3.2 保存满减优惠表
+        // 3.3 保存打折优惠表
+    }
+```
+
+![](https://oss.yiki.tech/gmall/20251223231933686.png)
+
+
+
+#### 1.2 保存 pms_spu_desc
+
+```java
+    @Override
+    public void bigSave(SpuVo spu) {
+        // 1. 保存 spu 相关信息
+        // 1.1 保存 spu 表
+        spu.setCreateTime(new Date());
+        // 再创建时间会导致不一致, 直接获取上一个设置的时间即可
+        spu.setUpdateTime(spu.getCreateTime());
+        save(spu); // 由于 `SpuVo` 对象继承自 `SpuEntity` 类，因此可以将 `SpuVo` 对象看作是 `SpuEntity` 对象的一个特殊版本，而 `SpuEntity` 对象可以直接保存到数据库中。因此，`SpuVo` 对象也可以直接保存到数据库中，这并不会产生任何问题。
+
+        // 保存完 spu 后主键回显 抽取 spuId 给以下保存方法使用
+        Long spuId = spu.getId();
+
+        // 1.2 保存 pms_spu_desc 本质与 spu 是同一张表(不需要批量新增使用 mapper 即可)
+        List<String> spuImages = spu.getSpuImages();
+        // spuImages 不为空才进行保存 spu 信息介绍表
+        if (CollectionUtils.isNotEmpty(spuImages)) {
+            SpuDescEntity spuDescEntity = new SpuDescEntity();
+            // 本质与 spu 是同一张表, 没有自己的 Id 需要 设置 spuId
+            spuDescEntity.setSpuId(spuId); // 设置图片 id
+            // 将集合以 "," 拼接符 拼接到一起形成新的 字符串
+            spuDescEntity.setDecript(StringUtils.join(spuImages, ",")); // ["1", "2"] -> "1,2"
+            descMapper.insert(spuDescEntity);
+        }
+
+        // 1.3 保存 pms_spu_attr_value 基本属性值表
+
+        // 2. 保存 sku 相关信息
+        // 2.1 保存 pms_sku
+        // 2.2 保存 pms_sku_images 本质与 sku 是同一张表, 如果不为空才需要保存图片
+        // 2.3 保存 pms_sku_attr_value 销售属性值表
+
+        // 3. 保存 营销 相关信息
+        // 3.1 保存积分优惠表
+        // 3.2 保存满减优惠表
+        // 3.3 保存打折优惠表
+    }
+```
+
+![](https://oss.yiki.tech/gmall/20251223232006101.png)
+
+
+
+#### 1.3 保存 pms_spu_attr_value
+
+```java
+    @Override
+    public void bigSave(SpuVo spu) {
+        // 1. 保存 spu 相关信息
+        // 1.1 保存 spu 表
+        spu.setCreateTime(new Date());
+        // 再创建时间会导致不一致, 直接获取上一个设置的时间即可
+        spu.setUpdateTime(spu.getCreateTime());
+        save(spu); // 由于 `SpuVo` 对象继承自 `SpuEntity` 类，因此可以将 `SpuVo` 对象看作是 `SpuEntity` 对象的一个特殊版本，而 `SpuEntity` 对象可以直接保存到数据库中。因此，`SpuVo` 对象也可以直接保存到数据库中，这并不会产生任何问题。
+
+        // 保存完 spu 后主键回显 抽取 spuId 给以下保存方法使用
+        Long spuId = spu.getId();
+
+        // 1.2 保存 pms_spu_desc 本质与 spu 是同一张表(不需要批量新增使用 mapper 即可)
+        List<String> spuImages = spu.getSpuImages();
+        // spuImages 不为空才进行保存 spu 信息介绍表
+        if (CollectionUtils.isNotEmpty(spuImages)) {
+            SpuDescEntity spuDescEntity = new SpuDescEntity();
+            // 本质与 spu 是同一张表, 没有自己的 Id 需要 设置 spuId
+            spuDescEntity.setSpuId(spuId); // 设置图片 id
+            // 将集合以 "," 拼接符 拼接到一起形成新的 字符串
+            spuDescEntity.setDecript(StringUtils.join(spuImages, ",")); // ["1", "2"] -> "1,2"
+            descMapper.insert(spuDescEntity);
+        }
+
+        // 1.3 保存 pms_spu_attr_value 基本属性值表(需要使用批量保存使用 service)
+        List<SpuAttrValueVo> baseAttrs = spu.getBaseAttrs();
+        // baseAttrs 不为空才需要保存 spu 基本信息
+        if (CollectionUtils.isNotEmpty(baseAttrs)) {
+            baseAttrService.saveBatch(
+                    // 将 List<SpuAttrValueVo> 转换为 List<spuAttrValueEntity>
+                    baseAttrs.stream().map(spuAttrValueVo -> {
+                        SpuAttrValueEntity spuAttrValueEntity = new SpuAttrValueEntity();
+
+                        // 将 spuAttrValueVo 中的值赋值给 spuAttrValueEntity, 需要在设值前 拷贝, 否则会出现 数据丢失
+                        BeanUtils.copyProperties(spuAttrValueVo, spuAttrValueEntity); // 源 -> 对象(从 源中 拷贝到 对象)
+                        // 设置 spuId
+                        spuAttrValueEntity.setSpuId(spuId);
+                        // 设置排序字段
+                        spuAttrValueEntity.setSort(
+                                // 如果 spuAttrValueVo.getSort() 值为 null 则设置为 0
+                                Optional.ofNullable(spuAttrValueVo.getSort()).orElse(0)
+                        );
+
+                        return spuAttrValueEntity;
+                    }).collect(Collectors.toList())
+            );
+        }
+
+        // 2. 保存 sku 相关信息
+        // 2.1 保存 pms_sku
+        // 2.2 保存 pms_sku_images 本质与 sku 是同一张表, 如果不为空才需要保存图片
+        // 2.3 保存 pms_sku_attr_value 销售属性值表
+
+        // 3. 保存 营销 相关信息
+        // 3.1 保存积分优惠表
+        // 3.2 保存满减优惠表
+        // 3.3 保存打折优惠表
+    }
+```
+
+![](https://oss.yiki.tech/gmall/20251223232031427.png)
